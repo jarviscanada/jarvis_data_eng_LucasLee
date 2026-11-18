@@ -11,23 +11,14 @@ All of the code within this repository is expected to run on a Rocky Linux 9 x86
 Start a PSQL instance with Docker
 
 ```bash
-# Docker setup
-su rocky
+# Create a PSQL Docker container
+./scripts/psql_docker.sh create db_username db_password
 
-sudo systemctl status docker || sudo systemctl start docker
+# Start a PSQL Docker container
+./scripts/psql_docker.sh start
 
-docker volume create pgdata
-
-export PGPASSWORD='password'
-
-docker run --name jrvs-psql -e POSTGRES_PASSWORD=$PGPASSWORD  -d -v pgdata:/var/lib/postgresql/data -p 5432:5432 postgres:9.6-alpine
-
-docker container start jrvs-psql
-
-# Connect to PSQL and check if the database is there
-psql -h localhost -U postgres -d postgres -W
-
-postgres=# \l
+# Stop a PSQL Docker container
+./scripts/psql_docker.sh stop
 ```
 
 Create tables using `ddl.sql`
@@ -63,18 +54,48 @@ crontab -l
 ```
 
 # Implemenation
-Discuss how you implement the project.
+
+There will be one centralized database for this project. From this, each Linux machine will run the scripts with Crontab by itself and insert the data into the database. See the architecture image for a visual representation.
 
 ## Architecture
-Draw a cluster diagram with three Linux hosts, a DB, and agents (use draw.io website). Image must be saved to the `assets` directory.
+
+![architecture](assets/architecture.drawio.png)
 
 ## Scripts
-Shell script description and usage (use markdown code block for script usage)
-- psql_docker.sh
-- host_info.sh
-- host_usage.sh
-- crontab
-- queries.sql (describe what business problem you are trying to resolve)
+
+`psql_docker.sh`: Run custom commands to create, start, and stop a Docker container
+
+```bash
+# Create a PSQL Docker container
+./scripts/psql_docker.sh create db_username db_password
+
+# Start a PSQL Docker container
+./scripts/psql_docker.sh start
+
+# Stop a PSQL Docker container
+./scripts/psql_docker.sh stop
+```
+
+`host_info.sh`: Build a script to get the host's machine data
+
+```bash
+./scripts/host_info.sh psql_host psql_port db_name psql_user psql_password
+```
+
+`host_usage.sh`: Retreive CPU and memory usage data
+
+```bash
+bash scripts/host_usage.sh psql_host psql_port db_name psql_user psql_password
+```
+
+`crontab`: Automate the data collecting
+
+```bash
+crontab -e
+
+# Once you're in Crontab, enter this command:
+* * * * * bash /home/rocky/jarvis_data_eng_LucasLee/host_usage.sh localhost 5432 host_agent postgres password > /tmp/host_usage.log
+```
 
 ## Database Modeling
 
@@ -82,7 +103,7 @@ Shell script description and usage (use markdown code block for script usage)
 
 | **Column Name** | **Data Type** | **Description** |
 |---|---|---|
-| `id` | `SERIAL` (auto-incrementing integer), NOT NULL | Automatically built unique identifier for each row |
+| `id` | `SERIAL` (auto-incrementing integer), NOT NULL | Automatically build unique identifier for each row |
 | `hostname` | `VARCHAR`, NOT NULL | Host machine's name |
 | `cpu_number` | `INT2`, NOT NULL | Number of CPUs on the host |
 | `cpu_architecture` | `VARCHAR`, NOT NULL | CPU architecture, e.g. `x86_64`, `arm64`, etc. |
@@ -105,7 +126,8 @@ Shell script description and usage (use markdown code block for script usage)
 | `disk_available` | `INT4`, NOT NULL | Available disk space on the host in MB |
 
 # Test
-How did you test your bash scripts DDL? What was the result?
+
+It was tested with a variety of custom insert statements to check whether the database would hold the correct information. For example, I would use strings for columns that wanted numbers or insert timestamps that were not in the correct format. The results concluded that the database schema remained intact and did not suffer any data type conflicts.
 
 # Deployment
 
