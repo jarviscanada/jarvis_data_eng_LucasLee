@@ -11,33 +11,46 @@ All of the code within this repository is expected to run on a Rocky Linux 9 x86
 Start a PSQL instance with Docker
 
 ```bash
+# Docker setup
 su rocky
 
 sudo systemctl status docker || sudo systemctl start docker
 
-docker pull postgres
+docker volume create pgdata
+
+export PGPASSWORD='password'
+
+docker run --name jrvs-psql -e POSTGRES_PASSWORD=$PGPASSWORD  -d -v pgdata:/var/lib/postgresql/data -p 5432:5432 postgres:9.6-alpine
 
 docker container start jrvs-psql
+
+# Connect to PSQL and check if the database is there
+psql -h localhost -U postgres -d postgres -W
+
+postgres=# \l
 ```
 
-- Create tables using ddl.sql
+Create tables using `ddl.sql`
 
 ```bash
 # From the root folder of the repository, run the following command:
 
 psql -h localhost -U postgres -d host_agent -f sql/ddl.sql
 ```
-- Insert hardware specs data into the DB using host_info.sh
+
+Run hardware specs usage and data
 
 ```bash
+# Can run the scripts by themselves
+
+# Insert hardware specs data into the DB using host_info.sh
 ./scripts/host_info.sh psql_host psql_port db_name psql_user psql_password
 
-
+# Insert hardware usage data into the DB using host_usage.sh
 bash scripts/host_usage.sh psql_host psql_port db_name psql_user psql_password
 ```
 
-- Insert hardware usage data into the DB using host_usage.sh
-- Crontab setup
+Crontab setup
 
 ```bash
 crontab -e
@@ -46,6 +59,7 @@ crontab -e
 * * * * * bash /home/rocky/jarvis_data_eng_LucasLee/host_usage.sh localhost 5432 host_agent postgres password > /tmp/host_usage.log
 
 # Leave crontab and check if it is inserted:
+crontab -l
 ```
 
 # Implemenation
